@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Calibraciones | Baños Térmicos</title>
+    <link rel="stylesheet" href="../style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🌡️ Inspección, Mantenimiento de Baños Térmicos <small
+                    style="font-size: 0.5em; color: #ffeb3b;">v1.0-BANOS</small>
+            </h1>
+            <p class="subtitle">Calibración a un Punto de Temperatura</p>
+        </header>
+
+        <section class="card upload-section">
+            <div class="file-upload" id="dropZone">
+                <input type="file" id="fileInput" accept=".xlsx,.xls">
+                <div class="icon">🌡️</div>
+                <div class="text" id="fileLabel">Cargar Relevamiento de Equipos (Excel)</div>
+            </div>
+            <div class="btn-row hidden" id="configActions">
+                <button id="clearDataBtn" class="btn btn-danger">🗑️ Borrar Datos</button>
+                <button id="exportBackupBtn" class="btn btn-secondary">📦 Exportar Backup</button>
+                <button id="importBackupBtn" class="btn btn-secondary">📥 Importar Backup</button>
+                <input type="file" id="importBackupFile" accept=".json" style="display:none">
+            </div>
+        </section>
+
+        <main id="mainContent" class="hidden">
+            <div class="filters-grid">
+                <div class="card">
+                    <label>🏥 Seleccionar Clínica (Hoja)</label>
+                    <select id="sheetSelector" class="filter-select"></select>
+                </div>
+                <div class="card">
+                    <label>🔍 Buscar por Serie</label>
+                    <input type="text" id="serieFilter" placeholder="Ingresa número de serie..."
+                        style="text-transform: uppercase;">
+                </div>
+            </div>
+
+            <div class="card summary-card">
+                <div class="summary-item" id="totalEquipos">
+                    <span class="val">0</span>
+                    <span class="lab">Equipos</span>
+                </div>
+                <div class="summary-item warning" id="cercaVencer">
+                    <span class="val">0</span>
+                    <span class="lab">Por Vencer</span>
+                </div>
+                <div class="summary-item danger" id="vencidos">
+                    <span class="val">0</span>
+                    <span class="lab">Vencidos</span>
+                </div>
+            </div>
+
+            <div class="table-container card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Equipo</th>
+                            <th>N° Serie</th>
+                            <th>Última Calibración</th>
+                            <th>Técnico</th>
+                            <th>Cert.</th>
+                            <th>Estado</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="equiposTableBody"></tbody>
+                </table>
+            </div>
+        </main>
+
+        <!-- Modal Editar Calibración -->
+        <div id="editModal" class="modal-overlay hidden">
+            <div class="modal">
+                <div class="input-group">
+                    <label>Nombre del Equipo</label>
+                    <input type="text" id="equipmentNameInput" placeholder="Nombre del equipo">
+                </div>
+                <div class="input-group">
+                    <label>N° de Serie</label>
+                    <input type="text" id="modalSerieInput" placeholder="Número de serie"
+                        style="text-transform: uppercase;">
+                </div>
+                <div class="input-group">
+                    <label>Fecha de Calibración</label>
+                    <input type="date" id="calibDateInput">
+                </div>
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label>Marca</label>
+                        <input type="text" id="brandInput" placeholder="Marca del equipo">
+                    </div>
+                    <div class="input-group">
+                        <label>Modelo</label>
+                        <input type="text" id="modelInput" placeholder="Modelo del equipo">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Orden de Mantenimiento (Orden M)</label>
+                    <input type="text" id="ordenMInput" placeholder="Ej: 9230555">
+                </div>
+                <div class="instruments-section">
+                    <div class="instruments-header">
+                        <h4>Instrumental Utilizado</h4>
+                        <button type="button" id="addInstrumentBtn" class="btn btn-secondary btn-small">+
+                            Añadir</button>
+                    </div>
+                    <div id="instrumentsContainer" class="instruments-list">
+                    </div>
+                </div>
+
+                <!-- Sección: Estado de Valoración -->
+                <div class="inspection-section">
+                    <h4>Estado de Valoración</h4>
+                    <div id="evaluationStatusContainer" class="inspection-grid">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Comentarios Generales</label>
+                    <textarea id="commentsInput" rows="2" placeholder="Ej: Fue necesario reparar..."
+                        style="width: 100%; box-sizing: border-box;"></textarea>
+                </div>
+
+                <!-- Sección: Puntos de Inspección -->
+                <div class="inspection-section">
+                    <h4 id="inspectionTitle">Evaluación del Equipo</h4>
+                    <div id="inspectionPointsContainer" class="inspection-grid">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Técnico de Calibración</label>
+                    <input type="text" id="technicianInput" placeholder="Nombre del técnico">
+                </div>
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label>Edificio</label>
+                        <input type="text" id="buildingInput" placeholder="Ej: Catamarca">
+                    </div>
+                    <div class="input-group">
+                        <label>Sector</label>
+                        <input type="text" id="sectorInput" placeholder="Ej: Laboratorio">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Ubicación Técnica</label>
+                    <input type="text" id="locationInput" placeholder="Ej: IC-SM-CAT-LAB-01">
+                </div>
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label>Certificado (PDF/Imagen/Excel)</label>
+                        <input type="file" id="certFileInput" accept=".pdf,.xlsx,.xls,image/*">
+                        <p id="certStatus"></p>
+                    </div>
+                    <div class="input-group">
+                        <label>O usar Plantilla Guardada</label>
+                        <select id="templateSelector" class="filter-select">
+                            <option value="">-- Seleccionar Plantilla --</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="saveTemplateRow" class="input-group hidden">
+                    <label>Nombre para guardar esta Plantilla</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="templateNameInput" placeholder="Ej: Plantilla Baño 2025"
+                            style="flex: 1;">
+                        <button type="button" id="saveNewTemplateBtn" class="btn btn-secondary">💾 Guardar
+                            Plantilla</button>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button id="saveCalibBtn" class="btn btn-primary">Guardar</button>
+                    <button id="resetCalibBtn" class="btn btn-danger">Resetear Equipo</button>
+                    <button id="closeModalBtn" class="btn btn-secondary">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js?v=20260311_1345"></script>
+    <datalist id="instrumentsHistory"></datalist>
+</body>
+
+</html>
